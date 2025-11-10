@@ -1,11 +1,11 @@
 ditto/
 │
 ├── main.py              # hlavní soubor – spouští aplikaci
-├── database.py          # práce s databází (recepty, prisady)
-├── ui_main.py           # hlavní GUI (menu, volba testu)
-├── ui_quiz.py           # GUI pro samotný test
-├── ui_results.py        # GUI pro přehled výsledků
+├── database.py          # práce s databází (recepty, přísady)
+├── ui_main.py           # hlavní GUI (menu - volba vyhledávání/databáze/ukončit )
+│   ├── ui_search.py     # GUI pro vyhledávání v receptech
+│   └── ui_database.py   # GUI pro náhled do databáze receptů
+│	└── ui_recept.py # GUI pro jednotlivé recepty
 ├── data/
-│   ├── questions.db     # databáze s otázkami a výsledky
-│   └── default_questions.sql  # volitelný export/seed dat
+│   └── recepty.db       # databáze s recepty
 └── README.md            # krátký popis, jak aplikaci spustit
