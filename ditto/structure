@@ -1,6 +1,6 @@
 Ditto/
 ├── main.py
-├── search.py
 ├── database.py
-├── recipe_detail.py
-└── db.sqlite3
+├── dito.jpg
+└── data
+    └── recepty.db

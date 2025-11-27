@@ -3,7 +3,16 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import os
 
-from database import init_db, get_recepty, get_recept, add_recept, update_recept, delete_recept, search_recepty
+from database import (
+    init_db,
+    get_recepty,
+    get_recept,
+    add_recept,
+    update_recept,
+    delete_recept,
+    search_recepty
+)
+
 
 class DittoApp(tk.Tk):
     def __init__(self):
@@ -29,6 +38,8 @@ class DittoApp(tk.Tk):
         frame = self.frames[page_name]
         if page_name == "DatabasePage":
             frame.refresh()
+        if page_name == "SearchPage":
+            frame.refresh_all()            
         frame.tkraise()
 
 
@@ -37,7 +48,12 @@ class MainMenu(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#f3f3f3")
 
-        tk.Label(self, text="Ditto", font=("Arial", 22, "bold"), bg="#f3f3f3", fg="#222222").pack(pady=10)
+        tk.Label(self,
+            text="Ditto",
+            font=("Arial", 22, "bold"),
+            bg="#f3f3f3",
+            fg="#222222"
+        ).pack(pady=10)
 
         # ditto image in mainmenu
         if os.path.exists("ditto.jpg"):
@@ -45,7 +61,8 @@ class MainMenu(tk.Frame):
             self.img = ImageTk.PhotoImage(image)
             tk.Label(self, image=self.img, bg="#f3f3f3").pack(pady=10)
         else:
-            tk.Label(self, text="[Ditto.jpg missing]", bg="#f3f3f3").pack(pady=30)
+            tk.Label(self, text="[Chybí obrázek Ditto]",
+                     bg="#f3f3f3", fg="#222222").pack(pady=30)
 
         ttk.Button(self, text="Vyhledavani", command=lambda: controller.show_frame("SearchPage")).pack(pady=10)
         ttk.Button(self, text="Databaze receptu", command=lambda: controller.show_frame("DatabasePage")).pack(pady=10)
@@ -55,8 +72,16 @@ class MainMenu(tk.Frame):
 class SearchPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#f3f3f3")
+        self.controller = controller
+        self.ids = []
 
-        tk.Label(self, text="Vyhledavani receptu", font=("Arial", 16, "bold"), bg="#f3f3f3", fg="#222222").pack(pady=10)
+        tk.Label(
+            self, 
+            text="Vyhledavani receptu",
+            font=("Arial", 16, "bold"),
+            bg="#f3f3f3",
+            fg="#222222"
+        ).pack(pady=10)
 
         top = tk.Frame(self, bg="#f3f3f3")
         top.pack(pady=5)
@@ -87,14 +112,17 @@ class SearchPage(tk.Frame):
 
     def refresh_all(self):
         self.listbox.delete(0, tk.END)
-        for rid, nazev, cas in get_recepty():
-            self.listbox.insert(tk.END, f"{rid}, {nazev} ({cas})")
+        self.ids = []
+        for i, (rid, nazev, cas) in enumerate(get_recepty(), start=1):
+            self.listbox.insert(tk.END, f"{i}, {nazev} ({cas})")
+            self.ids.append(rid)
 
     def do_search(self):
         text = self.entry.get().strip()
         if not text:
             self.refresh_all()
             return
+
         mode_label = self.combo.get()
         if mode_label == "cas":
             mode = "cas"
@@ -105,8 +133,10 @@ class SearchPage(tk.Frame):
 
         rows = search_recepty(text, mode)
         self.listbox.delete(0, tk.END)
-        for rid, nazev, cas in rows:
-            self.listbox.insert(tk.END, f"{rid}, {nazev} ({cas})")
+        self.ids = []
+        for i, (rid, nazev, cas) in enumerate(rows, start=1):
+            self.listbox.insert(tk.END, f"{i}, {nazev} ({cas})")
+            self.ids.append(rid)
 
     def _get_selected_id(self):
         sel = self.listbox.curselection()
@@ -114,18 +144,15 @@ class SearchPage(tk.Frame):
             messagebox.showinfo("Info", "Nejprve vyber recept.")
             return None
         index = sel[0]
-        item_text = self.listbox.get(index)
-        try:
-            rid = int(item_text.split(".")[0])
-        except ValueError:
+        if index < 0 or index >= len(self.ids):
             return None
-        return rid
+        return self.ids[index]            
 
     def open_recept(self):
         rid = self._get_selected_id()
         if rid is None:
             return
-        recipe_page: RecipePage = self.controller.frames["RecipePage"]
+        recipe_page: "RecipePage" = self.controller.frames["RecipePage"]
         recipe_page.set_recept(rid)
         self.controller.show_frame("RecipePage")                                                                                            
 
@@ -163,7 +190,6 @@ class AddRecipeWindow(tk.Toplevel):
         self.text_postup.insert("1.0", postup0)
         self.text_postup.pack(padx=10)
 
-
         btn_frame = tk.Frame(self)
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="Ulozit", command=self.save).pack(side="left", padx=5)
@@ -197,11 +223,18 @@ class DatabasePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#f3f3f3")
         self.controller = controller
+        self.ids = []
 
         top_frame = tk.Frame(self, bg="#f3f3f3")
         top_frame.pack(fill="x", pady=10)
 
-        tk.Label(top_frame, text="Databaze receptu", font=("Arial", 16, "bold"), bg="#f3f3f3", fg="#222222").pack(side="left", padx=10)
+        tk.Label(
+            top_frame,
+            text="Databaze receptu",
+            font=("Arial", 16, "bold"),
+            bg="#f3f3f3",
+            fg="#222222"
+        ).pack(side="left", padx=10)
 
         ttk.Button(top_frame, text="Pridat recept", command=self.open_add_window).pack(side="right", padx=10)
 
@@ -220,8 +253,10 @@ class DatabasePage(tk.Frame):
 
     def refresh(self):
         self.listbox.delete(0, tk.END)
-        for rid, nazev, cas in get_recepty():
-            self.listbox.insert(tk.END, f"{rid}. {nazev} ({cas})")
+        self.ids = []
+        for i, (rid, nazev, cas) in enumerate(get_recepty(), start=1):
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
+            self.ids.append(rid)
 
     def _get_selected_id(self):
         sel = self.listbox.curselection()
@@ -229,12 +264,9 @@ class DatabasePage(tk.Frame):
             messagebox.showinfo("Info", "Nejprve vyber recept.")
             return None
         index = sel[0]
-        item_text = self.listbox.get(index)
-        try:
-            rid = int(item_text.split(".")[0])
-        except ValueError:
+        if index < 0 or index >= len(self.ids):
             return None
-        return rid
+        return self.ids[index] 
                 
     def open_add_window(self):
         AddRecipeWindow(self, on_saved=self.refresh)
@@ -243,7 +275,7 @@ class DatabasePage(tk.Frame):
         rid = self._get_selected_id()
         if rid is None:
             return
-        recipe_page: RecipePage = self.controller.frames["RecipePage"]            
+        recipe_page: "RecipePage" = self.controller.frames["RecipePage"]            
         recipe_page.set_recept(rid)
         self.controller.show_frame("RecipePage")
 
@@ -272,7 +304,10 @@ class RecipePage(tk.Frame):
         super().__init__(parent, bg="#f3f3f3")
         self.controller = controller
 
-        self.title_label = tk.Label(self, text="", font=("Arial", 16, "bold"), bg="#f3f3f3", fg="#222222")
+        self.title_label = tk.Label(self, text="",
+                                    font=("Arial", 16, "bold"),
+                                    bg="#f3f3f3",
+                                    fg="#222222")
         self.title_label.pack(pady=10)
         self.info_label = tk.Label(self, text="", bg="#f3f3f3", fg="#222222")
         self.info_label.pack(pady=5)
@@ -294,9 +329,10 @@ class RecipePage(tk.Frame):
 
         _, nazev, cas, suroviny, postup = data
         self.title_label.config(text=nazev)
-        self.info_label.config(text=f"cas: {cas}")
-        self.ing_label.config(text=f"suroviny:\n{suroviny}")
-        self.proc_label.config(text=f"postup:\n{postup}")
+        self.info_label.config(text=f"Cas: {cas}")
+        self.ing_label.config(text=f"Suroviny:\n{suroviny}")
+        self.proc_label.config(text=f"Postup:\n{postup}")
+
 
 if __name__ == "__main__":
     init_db()

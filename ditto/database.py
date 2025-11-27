@@ -78,9 +78,9 @@ def search_recepty(text, mode="nazev"):
         )    
     else:
         c.execute(
-            "SELECT id, nazev, cas FROM recepty WHERE cas LIKE ? ORDER BY id DESC",
+            "SELECT id, nazev, cas FROM recepty WHERE nazev LIKE ? ORDER BY id DESC",
             (pattern,)
         )   
     data = c.fetchall()
     conn.close()
-    return data         
+    return data
