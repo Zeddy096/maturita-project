@@ -64,9 +64,9 @@ class MainMenu(tk.Frame):
             tk.Label(self, text="[Chybí obrázek Ditto]",
                      bg="#f3f3f3", fg="#222222").pack(pady=30)
 
-        ttk.Button(self, text="Vyhledavani", command=lambda: controller.show_frame("SearchPage")).pack(pady=10)
-        ttk.Button(self, text="Databaze receptu", command=lambda: controller.show_frame("DatabasePage")).pack(pady=10)
-        ttk.Button(self, text="Ukoncit", command=controller.quit).pack(pady=20)
+        ttk.Button(self, text="Vyhledávání", command=lambda: controller.show_frame("SearchPage")).pack(pady=10)
+        ttk.Button(self, text="Databáze receptů", command=lambda: controller.show_frame("DatabasePage")).pack(pady=10)
+        ttk.Button(self, text="Ukončit", command=controller.quit).pack(pady=20)
 
 # search page
 class SearchPage(tk.Frame):
@@ -77,7 +77,7 @@ class SearchPage(tk.Frame):
 
         tk.Label(
             self, 
-            text="Vyhledavani receptu",
+            text="Vyhledávání receptu",
             font=("Arial", 16, "bold"),
             bg="#f3f3f3",
             fg="#222222"
@@ -93,7 +93,7 @@ class SearchPage(tk.Frame):
         self.entry.bind("<Return>", lambda e: self.do_search())
 
         self.combo = ttk.Combobox(top, state="readonly", width=10)
-        self.combo["values"] = ("nazev", "cas", "suroviny")
+        self.combo["values"] = ("Název", "Čas", "Suroviny")
         self.combo.current(0)
         self.combo.pack(side="left", padx=5)
 
@@ -108,7 +108,7 @@ class SearchPage(tk.Frame):
 
         ttk.Button(btn_frame, text="Zobrazit", command=self.open_recept).pack(side="left", padx=5)
 
-        ttk.Button(btn_frame, text="Zpet", command=lambda: controller.show_frame("MainMenu")).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Zpět", command=lambda: controller.show_frame("MainMenu")).pack(side="left", padx=5)
 
     def refresh_all(self):
         self.listbox.delete(0, tk.END)
@@ -124,9 +124,9 @@ class SearchPage(tk.Frame):
             return
 
         mode_label = self.combo.get()
-        if mode_label == "cas":
+        if mode_label == "Čas":
             mode = "cas"
-        elif mode_label == "suroviny":
+        elif mode_label == "Suroviny":
             mode = "suroviny"
         else:
             mode = "nazev"
@@ -160,7 +160,7 @@ class SearchPage(tk.Frame):
 class AddRecipeWindow(tk.Toplevel):
     def __init__(self, parent, on_saved, data=None):
         super().__init__(parent)
-        self.title("Pridat recept" if data is None else "Upravit recept")
+        self.title("Přidat recept" if data is None else "Upravit recept")
         self.geometry("400x500")
         self.on_saved = on_saved
         self.recept_id = None
@@ -170,12 +170,12 @@ class AddRecipeWindow(tk.Toplevel):
 
         nazev0, cas0, suroviny0, postup0 = data
 
-        tk.Label(self, text="Nazev:").pack(anchor="w", padx=10, pady=(10, 0))
+        tk.Label(self, text="Název:").pack(anchor="w", padx=10, pady=(10, 0))
         self.entry_nazev = tk.Entry(self, width=40)
         self.entry_nazev.insert(0, nazev0)
         self.entry_nazev.pack(padx=10)
 
-        tk.Label(self, text="Cas:").pack(anchor="w", padx=10, pady=(10, 0))
+        tk.Label(self, text="Čas (v minutách):").pack(anchor="w", padx=10, pady=(10, 0))
         self.entry_cas = tk.Entry(self, width=40)
         self.entry_cas.insert(0, cas0)
         self.entry_cas.pack(padx=10)
@@ -192,8 +192,8 @@ class AddRecipeWindow(tk.Toplevel):
 
         btn_frame = tk.Frame(self)
         btn_frame.pack(pady=10)
-        ttk.Button(btn_frame, text="Ulozit", command=self.save).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Zrusit", command=self.destroy).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Uložit", command=self.save).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Zrušit", command=self.destroy).pack(side="left", padx=5)
     
     def set_id(self, rid):
         self.recept_id = rid
@@ -205,7 +205,7 @@ class AddRecipeWindow(tk.Toplevel):
         postup = self.text_postup.get("1.0", "end").strip()   
 
         if not nazev:
-            messagebox.showwarning("Chyba", "Nazev je povinny.")
+            messagebox.showwarning("Chyba", "Název je povinný.")
             return
 
         if self.recept_id is None:
@@ -230,13 +230,13 @@ class DatabasePage(tk.Frame):
 
         tk.Label(
             top_frame,
-            text="Databaze receptu",
+            text="Databáze receptů",
             font=("Arial", 16, "bold"),
             bg="#f3f3f3",
             fg="#222222"
         ).pack(side="left", padx=10)
 
-        ttk.Button(top_frame, text="Pridat recept", command=self.open_add_window).pack(side="right", padx=10)
+        ttk.Button(top_frame, text="Přidat recept", command=self.open_add_window).pack(side="right", padx=10)
 
         self.listbox = tk.Listbox(self, width=45, height=15)
         self.listbox.pack(pady=10)
@@ -247,7 +247,7 @@ class DatabasePage(tk.Frame):
         ttk.Button(btn_frame, text="Zobrazit", command=self.open_recept).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Upravit", command=self.edit_selected).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="Smazat", command=self.delete_selected).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text="Zpet", command=lambda: controller.show_frame("MainMenu")).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Zpět", command=lambda: controller.show_frame("MainMenu")).pack(side="left", padx=5)
 
         self.refresh()
 
@@ -294,7 +294,7 @@ class DatabasePage(tk.Frame):
         rid = self._get_selected_id()
         if rid is None:
             return
-        if messagebox.askyesno("Smazat", "Opravdu chces smazat tenhle recept?"):
+        if messagebox.askyesno("Smazat", "Opravdu chceš smazat tenhle recept?"):
             delete_recept(rid)
             self.refresh()    
 
@@ -316,7 +316,7 @@ class RecipePage(tk.Frame):
         self.proc_label = tk.Label(self, text="", bg="#f3f3f3", wraplength=380, justify="left", fg="#222222")
         self.proc_label.pack(pady=5)
 
-        ttk.Button(self, text="Zpet na databazi",command=lambda: controller.show_frame("DatabasePage")).pack(pady=20)
+        ttk.Button(self, text="Zpět na databázi",command=lambda: controller.show_frame("DatabasePage")).pack(pady=20)
 
     def set_recept(self, rid):
         data = get_recept(rid)
@@ -329,7 +329,7 @@ class RecipePage(tk.Frame):
 
         _, nazev, cas, suroviny, postup = data
         self.title_label.config(text=nazev)
-        self.info_label.config(text=f"Cas: {cas}")
+        self.info_label.config(text=f"Čas: {cas}")
         self.ing_label.config(text=f"Suroviny:\n{suroviny}")
         self.proc_label.config(text=f"Postup:\n{postup}")
 
