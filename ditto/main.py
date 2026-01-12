@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
 import os
 
 from database import (
@@ -13,6 +12,11 @@ from database import (
     search_recepty
 )
 
+try:
+    from PIL import Image, ImageTk
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
 class DittoApp(tk.Tk):
     def __init__(self):
@@ -56,13 +60,12 @@ class MainMenu(tk.Frame):
         ).pack(pady=10)
 
         # ditto image in mainmenu
-        if os.path.exists("ditto.jpg"):
+        if  HAS_PIL and os.path.exists("ditto.jpg"):
             image = Image.open("ditto.jpg").resize((200, 200))
             self.img = ImageTk.PhotoImage(image)
             tk.Label(self, image=self.img, bg="#f3f3f3").pack(pady=10)
         else:
-            tk.Label(self, text="[Chybí obrázek Ditto]",
-                     bg="#f3f3f3", fg="#222222").pack(pady=30)
+            tk.Label(self, text="[Chybí obrázek Ditto]", bg="#f3f3f3", fg="#222222").pack(pady=30)
 
         ttk.Button(self, text="Vyhledávání", command=lambda: controller.show_frame("SearchPage")).pack(pady=10)
         ttk.Button(self, text="Databáze receptů", command=lambda: controller.show_frame("DatabasePage")).pack(pady=10)
@@ -77,7 +80,7 @@ class SearchPage(tk.Frame):
 
         tk.Label(
             self, 
-            text="Vyhledávání receptu",
+            text="Vyhledávání receptů",
             font=("Arial", 16, "bold"),
             bg="#f3f3f3",
             fg="#222222"
@@ -89,7 +92,7 @@ class SearchPage(tk.Frame):
         tk.Label(top, text="Hledat:", bg="#f3f3f3", fg="#222222").pack(side="left", padx=5)
 
         self.entry = ttk.Entry(top, width=22)
-        self.entry.pack(sid="left", padx=5)
+        self.entry.pack(side="left", padx=5)
         self.entry.bind("<Return>", lambda e: self.do_search())
 
         self.combo = ttk.Combobox(top, state="readonly", width=10)
@@ -114,7 +117,7 @@ class SearchPage(tk.Frame):
         self.listbox.delete(0, tk.END)
         self.ids = []
         for i, (rid, nazev, cas) in enumerate(get_recepty(), start=1):
-            self.listbox.insert(tk.END, f"{i}, {nazev} ({cas})")
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
             self.ids.append(rid)
 
     def do_search(self):
@@ -135,7 +138,7 @@ class SearchPage(tk.Frame):
         self.listbox.delete(0, tk.END)
         self.ids = []
         for i, (rid, nazev, cas) in enumerate(rows, start=1):
-            self.listbox.insert(tk.END, f"{i}, {nazev} ({cas})")
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
             self.ids.append(rid)
 
     def _get_selected_id(self):
