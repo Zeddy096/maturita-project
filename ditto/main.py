@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
+from database import save_image_for_recipe
 import os
 
 from database import (
@@ -24,6 +25,7 @@ class DittoApp(tk.Tk):
         self.title("Ditto")
         self.geometry("420x500")
         self.configure(bg="#f3f3f3")
+        self.resizable(True, True)
 
         container = tk.Frame(self, bg="#f3f3f3")
         container.pack(fill="both", expand=True)
@@ -37,6 +39,8 @@ class DittoApp(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("MainMenu")
+        self.update_idletasks()
+        self.geometry("")
 
     def show_frame(self, page_name):
         frame = self.frames[page_name]
@@ -78,13 +82,7 @@ class SearchPage(tk.Frame):
         self.controller = controller
         self.ids = []
 
-        tk.Label(
-            self, 
-            text="Vyhledávání receptů",
-            font=("Arial", 16, "bold"),
-            bg="#f3f3f3",
-            fg="#222222"
-        ).pack(pady=10)
+        tk.Label(self, text="Vyhledávání receptů", font=("Arial", 16, "bold"), bg="#f3f3f3", fg="#222222").pack(pady=10)
 
         top = tk.Frame(self, bg="#f3f3f3")
         top.pack(pady=5)
@@ -100,10 +98,24 @@ class SearchPage(tk.Frame):
         self.combo.current(0)
         self.combo.pack(side="left", padx=5)
 
+        self.time_cmp = tk.StringVar(value="le")
+
+        self.cmp_frame = tk.Frame(self, bg="#f3f3f3")
+        self.cmp_frame.pack(pady=2)
+
+        self.rb_le = ttk.Radiobutton(self.cmp_frame, text="čas ≤", value="le", variable=self.time_cmp)
+        self.rb_eq = ttk.Radiobutton(self.cmp_frame, text="čas =", value="eq", variable=self.time_cmp)
+        self.rb_le.pack(side="left", padx=5)
+        self.rb_eq.pack(side="left", padx=5)
+
+        self.combo.bind("<<ComboboxSelected>>", lambda e: self._toggle_time_cmp())
+        self._toggle_time_cmp()
+
+
         ttk.Button(top, text="Hledat", command=self.do_search).pack(side="left", padx=5)
 
         self.listbox = tk.Listbox(self, width=45, height=15)
-        self.listbox.pack(pady=10)
+        self.listbox.pack(pady=10, fill="both", expand=True)
         self.listbox.bind("<Double-Button-1>", lambda e: self.open_recept())
 
         btn_frame = tk.Frame(self, bg="#f3f3f3")
@@ -116,29 +128,34 @@ class SearchPage(tk.Frame):
     def refresh_all(self):
         self.listbox.delete(0, tk.END)
         self.ids = []
-        for i, (rid, nazev, cas) in enumerate(get_recepty(), start=1):
-            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
+        for i, (rid, nazev, cas_min) in enumerate(get_recepty(), start=1):
+            cas_text = f"{cas_min} min" if cas_min is not None else "-"
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas_text})")
             self.ids.append(rid)
 
     def do_search(self):
         text = self.entry.get().strip()
+
         if not text:
             self.refresh_all()
             return
 
         mode_label = self.combo.get()
-        if mode_label == "Čas":
-            mode = "cas"
-        elif mode_label == "Suroviny":
-            mode = "suroviny"
-        else:
-            mode = "nazev"
 
-        rows = search_recepty(text, mode)
+        if mode_label == "Čas":
+            rows = search_recepty(text, mode="cas", time_cmp=self.time_cmp.get())
+        elif mode_label == "Suroviny":
+            rows = search_recepty(text, mode="suroviny")
+        else:
+            rows = search_recepty(text, mode="nazev")
+
         self.listbox.delete(0, tk.END)
         self.ids = []
-        for i, (rid, nazev, cas) in enumerate(rows, start=1):
-            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
+        if rows is None:
+            rows = []
+        for i, (rid, nazev, cas_min) in enumerate(rows, start=1):
+            cas_text = f"{cas_min} min" if cas_min is not None else "-"
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas_min} min)")
             self.ids.append(rid)
 
     def _get_selected_id(self):
@@ -158,20 +175,33 @@ class SearchPage(tk.Frame):
         recipe_page: "RecipePage" = self.controller.frames["RecipePage"]
         recipe_page.set_recept(rid)
         self.controller.show_frame("RecipePage")                                                                                            
+    def _toggle_time_cmp(self):
+        if self.combo.get() == "Čas":
+            self.cmp_frame.pack(pady=2)
+        else:
+            self.cmp_frame.pack_forget()
 
 # add recept window
 class AddRecipeWindow(tk.Toplevel):
     def __init__(self, parent, on_saved, data=None):
         super().__init__(parent)
         self.title("Přidat recept" if data is None else "Upravit recept")
-        self.geometry("400x500")
+        self.geometry("450x550")
         self.on_saved = on_saved
         self.recept_id = None
 
+        image_path0 = None
         if data is None:
             data = ("", "", "", "")
 
-        nazev0, cas0, suroviny0, postup0 = data
+        if len(data) == 4:
+            nazev0, cas0, suroviny0, postup0 = data
+
+        elif len(data) == 5:
+            nazev0, cas0, suroviny0, postup0, image_path0 = data
+        else:
+            nazev0, cas0, suroviny0, postup0 = ("", "", "", "")
+            image_path0 = None
 
         tk.Label(self, text="Název:").pack(anchor="w", padx=10, pady=(10, 0))
         self.entry_nazev = tk.Entry(self, width=40)
@@ -179,9 +209,24 @@ class AddRecipeWindow(tk.Toplevel):
         self.entry_nazev.pack(padx=10)
 
         tk.Label(self, text="Čas (v minutách):").pack(anchor="w", padx=10, pady=(10, 0))
-        self.entry_cas = tk.Entry(self, width=40)
+        vcmd = (self.register(self._only_digits), "%P")
+
+        self.entry_cas = tk.Entry(self, width=40, validate="key", validatecommand=vcmd)
         self.entry_cas.insert(0, cas0)
         self.entry_cas.pack(padx=10)
+
+        self.old_image_path = image_path0
+        self.image_path = image_path0
+
+        self.image_label = tk.Label(self, text="", anchor="w")
+        self.image_label.pack(fill="x", padx=10, pady=(10, 0))
+
+        if self.image_path:
+            self.image_label.config(text=f"Obrázek: {os.path.basename(self.image_path)}")
+        else:
+            self.image_label.config(text="Obrázek: žádný")
+
+        ttk.Button(self, text="Vybrat obrázek", command=self.pick_image).pack(padx=10, pady=5)
 
         tk.Label(self, text="Suroviny:").pack(anchor="w", padx=10, pady=(10, 0))
         self.text_suroviny = tk.Text(self, width=40, height=5)
@@ -203,7 +248,7 @@ class AddRecipeWindow(tk.Toplevel):
 
     def save(self):
         nazev = self.entry_nazev.get().strip()
-        cas = self.entry_cas.get().strip()
+        cas_min = self.entry_cas.get().strip()
         suroviny = self.text_suroviny.get("1.0", "end").strip()
         postup = self.text_postup.get("1.0", "end").strip()   
 
@@ -212,14 +257,35 @@ class AddRecipeWindow(tk.Toplevel):
             return
 
         if self.recept_id is None:
-            add_recept(nazev, cas, suroviny, postup)
+            rid = add_recept(nazev, cas_min, suroviny, postup, image_path=None)
+            img_final = None
+            if getattr(self, "image_path", None):
+                img_final = save_image_for_recipe(rid, self.image_path)
+            update_recept(rid, nazev, cas_min, suroviny, postup, image_path=img_final)        
         else:
-            update_recept(self.recept_id, nazev, cas, suroviny, postup)        
-
+            img_final = None
+            if getattr(self, "image_path", None):
+                img_final = save_image_for_recipe(self.recept_id, self.image_path)
+            else:
+                img_final = getattr(self, "old_image_path", None)
+            update_recept(self.recept_id, nazev, cas_min, suroviny, postup, image_path=img_final)     
         if self.on_saved:
             self.on_saved()
         self.destroy()    
 
+    def _only_digits(self, new_value):
+        return new_value.isdigit() or new_value == ""
+    def pick_image(self):
+        path = filedialog.askopenfilename(
+            title="Vyber obrázek",
+            filetypes=[
+                ("Images", "*.png *.jpg *.jpeg *.webp *.gif"),
+                ("All files", "*.*"),
+            ],
+        )
+        if path:
+            self.image_path = path
+            self.image_label.config(text=f"Obrázek: {os.path.basename(path)}")
 
 # database page
 class DatabasePage(tk.Frame):
@@ -257,8 +323,9 @@ class DatabasePage(tk.Frame):
     def refresh(self):
         self.listbox.delete(0, tk.END)
         self.ids = []
-        for i, (rid, nazev, cas) in enumerate(get_recepty(), start=1):
-            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas})")
+        for i, (rid, nazev, cas_min) in enumerate(get_recepty(), start=1):
+            cas_text = f"{cas_min} min" if cas_min is not None else "-"
+            self.listbox.insert(tk.END, f"{i}. {nazev} ({cas_text})")
             self.ids.append(rid)
 
     def _get_selected_id(self):
@@ -267,8 +334,6 @@ class DatabasePage(tk.Frame):
             messagebox.showinfo("Info", "Nejprve vyber recept.")
             return None
         index = sel[0]
-        if index < 0 or index >= len(self.ids):
-            return None
         return self.ids[index] 
                 
     def open_add_window(self):
@@ -278,7 +343,7 @@ class DatabasePage(tk.Frame):
         rid = self._get_selected_id()
         if rid is None:
             return
-        recipe_page: "RecipePage" = self.controller.frames["RecipePage"]            
+        recipe_page = self.controller.frames["RecipePage"]            
         recipe_page.set_recept(rid)
         self.controller.show_frame("RecipePage")
 
@@ -289,8 +354,10 @@ class DatabasePage(tk.Frame):
         data = get_recept(rid)
         if data is None:
             return
-        _, nazev, cas, suroviny, postup = data
-        win = AddRecipeWindow(self, on_saved=self.refresh, data=(nazev, cas, suroviny, postup))
+        rid_db, nazev, cas, suroviny, postup, *rest = data
+        cas_min = rest[0] if len(rest) > 0 else ""
+        image_path = rest[1] if len(rest) > 1 else None
+        win = AddRecipeWindow(self, on_saved=self.refresh, data=(nazev, cas_min, suroviny, postup, image_path))
         win.set_id(rid)
 
     def delete_selected(self):
@@ -306,6 +373,9 @@ class RecipePage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg="#f3f3f3")
         self.controller = controller
+        self.img_label = tk.Label(self, bg="#f3f3f3")
+        self.img_label.pack(pady=5)
+        self._img_ref = None
 
         self.title_label = tk.Label(self, text="",
                                     font=("Arial", 16, "bold"),
@@ -315,9 +385,9 @@ class RecipePage(tk.Frame):
         self.info_label = tk.Label(self, text="", bg="#f3f3f3", fg="#222222")
         self.info_label.pack(pady=5)
         self.ing_label = tk.Label(self, text="", bg="#f3f3f3", wraplength=380, justify="left", fg="#222222")
-        self.ing_label.pack(pady=5)
+        self.ing_label.pack(pady=5, fill="both", expand=True)
         self.proc_label = tk.Label(self, text="", bg="#f3f3f3", wraplength=380, justify="left", fg="#222222")
-        self.proc_label.pack(pady=5)
+        self.proc_label.pack(pady=5, fill="both", expand=True)
 
         ttk.Button(self, text="Zpět na databázi",command=lambda: controller.show_frame("DatabasePage")).pack(pady=20)
 
@@ -330,11 +400,47 @@ class RecipePage(tk.Frame):
             self.proc_label.config(text="")
             return
 
-        _, nazev, cas, suroviny, postup = data
+        nazev = data[1]
+        cas_min = None
+        suroviny = data[3]
+        postup = data[4]
+        image_path = None
+
+        # pokud existuje cas_min
+        if len(data) > 5:
+            cas_min = data[5]
+
+        # pokud existuje image_path
+        if len(data) > 6:
+            image_path = data[6]
+
         self.title_label.config(text=nazev)
-        self.info_label.config(text=f"Čas: {cas}")
+
+        if cas_min is None or cas_min == "":
+            self.info_label.config(text="Čas: -")
+        else:
+            self.info_label.config(text=f"Čas: {cas_min} min")
+
         self.ing_label.config(text=f"Suroviny:\n{suroviny}")
         self.proc_label.config(text=f"Postup:\n{postup}")
+
+        image_path = data[-1]
+
+        self.img_label.config(image="", text="")
+        self._img_ref = None
+
+        if image_path and os.path.exists(image_path) and HAS_PIL:
+            try:
+                img = Image.open(image_path)
+                img.thumbnail((300, 300))
+                self._img_ref = ImageTk.PhotoImage(img)
+                self.img_label.config(image=self._img_ref)
+            except Exception:
+                self.img_label.config(text=f"Obrázek nejde načíst: {os.path.basename(image_path)}")
+        elif image_path and os.path.exists(image_path):
+            self.img_label.config(text=f"Obrázek: {os.path.basename(image_path)}")
+        else:
+            self.img_label.config(text="Obrázek: žádný")
 
 
 if __name__ == "__main__":

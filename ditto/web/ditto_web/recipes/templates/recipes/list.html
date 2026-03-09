@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Recepty</title>
+</head>
+<body>
+  <h1>Recepty</h1>
+
+  <form method="get">
+    <input name="q" placeholder="hledat..." value="{{ q }}">
+
+    <select name="mode">
+      <option value="name" {% if mode == "name" %}selected{% endif %}>Název</option>
+      <option value="ingredients" {% if mode == "ingredients" %}selected{% endif %}>Suroviny</option>
+    </select>
+
+    <input name="t" placeholder="čas (min)" value="{{ t }}" style="width:90px;">
+
+    <label><input type="radio" name="cmp" value="le" {% if cmp == "le" %}checked{% endif %}> ≤</label>
+    <label><input type="radio" name="cmp" value="eq" {% if cmp == "eq" %}checked{% endif %}> =</label>
+
+    <button type="submit">Hledat</button>
+    <a href="/recipes/">Reset</a>
+  </form>
+
+  <hr>
+
+  <ul>
+    {% for r in recipes %}
+      <li>
+        <a href="{% url 'recipes:detail' r.id %}">{{ r.name }}</a>
+        {% if r.time_min %} ({{ r.time_min }} min){% endif %}
+      </li>
+    {% empty %}
+      <li>nic nenalezeno</li>
+    {% endfor %}
+  </ul>
+</body>
+</html>
