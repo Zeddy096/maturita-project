@@ -27,9 +27,18 @@ def init_db():
             nazev TEXT NOT NULL,
             cas TEXT,
             suroviny TEXT,
-            postup TEXT
+            postup TEXT,
+            cas_min INTEGER,
+            image_path TEXT,
+            tags TEXT
         )
     """)
+
+    c.execute("PRAGMA table_info(recepty)")
+    columns = [col[1] for col in c.fetchall()]
+
+    if "tags" not in columns:
+        c.execute("ALTER TABLE recepty ADD COLUMN tags TEXT")
     conn.commit()
     
     try:
@@ -54,15 +63,15 @@ def init_db():
     conn.commit()
     conn.close()    
 
-def add_recept(nazev, cas_min, suroviny, postup, image_path=None):
+def add_recept(nazev, cas_min, suroviny, postup, image_path=None, tags=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     cas_min = int(cas_min) if str(cas_min).strip() != "" else None
     cas_txt = f"{cas_min}" if cas_min is not None else ""
 
     c.execute(
-        "INSERT INTO recepty (nazev, cas, cas_min, suroviny, postup, image_path) VALUES (?, ?, ?, ?, ?, ?)",
-        (nazev, cas_txt, cas_min, suroviny, postup, image_path),
+        "INSERT INTO recepty (nazev, cas, cas_min, suroviny, postup, image_path, tags) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (nazev, cas_txt, cas_min, suroviny, postup, image_path, tags),
     )
     conn.commit()
     rid = c.lastrowid
@@ -85,14 +94,14 @@ def get_recept(rid):
     conn.close()
     return data
 
-def update_recept(rid, nazev, cas_min, suroviny, postup, image_path=None):
+def update_recept(rid, nazev, cas_min, suroviny, postup, image_path=None, tags=None):
     conn = _connect()
     c = conn.cursor()
     cas_min = int(cas_min) if str(cas_min).strip() != "" else None
     cas_txt = f"{cas_min}" if cas_min is not None else ""
     c.execute(
-        "UPDATE recepty SET nazev=?, cas=?, cas_min=?, suroviny=?, postup=?, image_path=? WHERE id=?", 
-        (nazev, cas_txt, cas_min, suroviny, postup, image_path, rid),
+        "UPDATE recepty SET nazev=?, cas=?, cas_min=?, suroviny=?, postup=?, image_path=?, tags=? WHERE id=?", 
+        (nazev, cas_txt, cas_min, suroviny, postup, image_path, tags, rid),
     )
     conn.commit()
     conn.close()
@@ -100,9 +109,20 @@ def update_recept(rid, nazev, cas_min, suroviny, postup, image_path=None):
 def delete_recept(rid):
     conn = _connect()
     c = conn.cursor()
+
+    c.execute("SELECT image_path FROM recepty WHERE id=?", (rid,))
+    row = c.fetchone()
+    image_path = row[0] if row else None
+
     c.execute("DELETE FROM recepty WHERE id=?", (rid,))
     conn.commit()
     conn.close()
+
+    if image_path and os.path.exists(image_path):
+        try:
+            os.remove(image_path)
+        except OSError:
+            pass
 
 def search_recepty(text, mode="nazev", time_cmp="le"):
     conn = _connect()
@@ -135,7 +155,12 @@ def search_recepty(text, mode="nazev", time_cmp="le"):
             c.execute(
                 "SELECT id, nazev, cas_min FROM recepty WHERE suroviny LIKE ? ORDER BY id DESC",
                 (pattern,),
-            )    
+            )
+        elif mode == "tags":
+            c.execute(
+                "SELECT id, nazev, cas_min FROM recepty WHERE tags LIKE ? ORDER BY id DESC",
+                (pattern,),
+            )
         else:
             c.execute(
                 "SELECT id, nazev, cas_min FROM recepty WHERE nazev LIKE ? ORDER BY id DESC",
