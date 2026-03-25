@@ -1,6 +1,0 @@
-Priority:
-1. webovka 
-2. aby search by time fungovalo "if cas == T ==> show recipe w/ t<=T"
-3. obrazek k receptu
-4. doporucovaci system tj "udelal sem si to vcera tak mi to muzes doporucit dneska"
-    - "tinder na jidlo"

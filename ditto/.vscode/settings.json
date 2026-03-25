@@ -1,6 +1,0 @@
-{
-  "python.defaultInterpreterPath": "/home/zeddy/Desktop/maturita-project/ditto/web/.venv/bin/python",
-  "python.terminal.activateEnvironment": true,
-  "python.languageServer": "Pylance",
-  "python.analysis.diagnosticMode": "workspace"
-}
